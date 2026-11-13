@@ -1,4 +1,5 @@
-﻿(function (thisObj) {
+﻿// zuq_エフェクトパレット: 使ったエフェクトを記録してエフェクト＆プリセットと同じ並びで一覧し、クリックで選択中のレイヤーへ適用する ScriptUI パネル
+(function (thisObj) {
     var SCRIPT_NAME = "zuq_エフェクトパレット";
     var CHECK_INTERVAL_MS = 1000;
     var SETTINGS_SECTION = "zuqEffectPalette";
@@ -22,6 +23,8 @@
         }
     }
 
+    // 全エフェクトの名前とカテゴリは app.effects が重く、マウス操作中に読むと AE が固まるので、初回に1度だけ読んで保存しておく
+    // app.effects は参照のたびに一覧を作り直すので、1度だけ取り出して使い回す
     if (app.settings.haveSetting(SETTINGS_SECTION, "effects")) {
         var known = app.settings.getSetting(SETTINGS_SECTION, "effects").split("\n");
         for (var k = 0; k < known.length; k++) {
@@ -45,6 +48,7 @@
     var tree = win.add("treeview");
     tree.preferredSize = [200, 400];
 
+    // 利用回数と名前を保存し、カテゴリも中身もエフェクト＆プリセットと同じ名前順に並べ直す（並びが変わった時だけ作り直し、開閉状態は引き継ぐ）
     function render(build) {
         if (!dirty) return;
         dirty = false;
@@ -82,6 +86,7 @@
         }
     }
 
+    // コンポの全レイヤーのエフェクト数を控え、前回より増えた分を利用回数に足す（初めて見るコンポは個数をプロジェクト内の数として取り込むだけ）
     function check(comp) {
         if (!(comp instanceof CompItem)) return;
         var known = seenComps[comp.id];
@@ -108,6 +113,8 @@
         }
     }
 
+    // アクティブコンポで追加されたエフェクトを拾って一覧を作り直す（連続発火は間引く）
+    // ツリーの操作中に作り直すと AE が固まって落ちるので、パネルの余白に入ったときとツリーから出たときだけ呼ぶ
     function onHover() {
         var now = new Date().getTime();
         if (now - lastCheck < CHECK_INTERVAL_MS) return;
@@ -116,11 +123,13 @@
         render();
     }
 
+    // ツリーの操作が終わってから fn を実行する（操作中に項目を足し引きすると AE が落ちるため）
     function later(fn) {
         $.global.zuqEffectPaletteLater = fn;
         app.scheduleTask("$.global.zuqEffectPaletteLater()", 0, false);
     }
 
+    // 名前のカテゴリを閉じた状態で作り直し、skip の名前のエフェクトは除く（スクリプトで閉じても表示が変わらないため）
     function rebuildNode(name, skip) {
         for (var i = 0; i < tree.items.length; i++) {
             if (tree.items[i].text !== name) continue;
@@ -134,17 +143,18 @@
         }
     }
 
+    // エフェクトを押したら選択中の全レイヤーへ追加し、Ctrl+クリックなら一覧から外し、カテゴリを押したら開閉する
     tree.onChange = function () {
         var item = this.selection;
         if (!item) return;
         this.selection = null;
         if (item.type === "node") {
-            var closing = [];
-            for (var n = 0; n < this.items.length; n++) if (this.items[n].expanded && (this.items[n].text !== item.text || item.expanded)) closing.push(this.items[n].text);
-            if (!item.expanded) item.expanded = true;
-            later(function () {
-                for (var c = 0; c < closing.length; c++) rebuildNode(closing[c]);
-            });
+            if (!item.expanded) {
+                item.expanded = true;
+                return;
+            }
+            var name = item.text;
+            later(function () { rebuildNode(name); });
             return;
         }
         if (ScriptUI.environment.keyboardState.ctrlKey) {
