@@ -10,7 +10,7 @@ aod-AE-plugin https://github.com/Aodaruma/aod-AE-plugin/tree/main を利用し�
 ## HZQ_AlphaDither.aex
 透明度をディザに変更します。配列ディザとランダムがあります。要は合成モードのディザ合成・ダイナミックディザ合成です。
 ## HZQ_Halftone.aex
-ハーフトーン。RGBそれぞれ分かれて付きます。
+ハーフトーン。CMYKそれぞれ分かれて付きます。
 ## HZQ_Kuwahara.aex
 Kuwaharaフィルタです。明度を角度に変更して油彩感を上げることが出来るおまけ付き。
 ## HZQ_LongShadow.aex
